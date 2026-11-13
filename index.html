@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Power Creep Calculator</title>
+<style>
+:root {
+  --bg: #f6f6f4; --panel: #ffffff; --ink: #1d1f22; --muted: #6b7078; --line: #e2e2de;
+  --accent: #b8452a; --accent-soft: #f6e3dc; --ok: #2f7d4f; --ok-soft: #e0f0e6;
+  --bad: #b3261e; --bad-soft: #fbe2e0; --pip: #d9d9d4; --pip-on: #b8452a; --pip-locked: #ecece8;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a; --panel: #1d2024; --ink: #e8e8e6; --muted: #9aa0a8; --line: #2e3237;
+    --accent: #e0714f; --accent-soft: #3a2620; --ok: #6cc28f; --ok-soft: #1f3327;
+    --bad: #f08a80; --bad-soft: #3d2120; --pip: #3a3e44; --pip-on: #e0714f; --pip-locked: #24272b;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a; --panel: #1d2024; --ink: #e8e8e6; --muted: #9aa0a8; --line: #2e3237;
+  --accent: #e0714f; --accent-soft: #3a2620; --ok: #6cc28f; --ok-soft: #1f3327;
+  --bad: #f08a80; --bad-soft: #3d2120; --pip: #3a3e44; --pip-on: #e0714f; --pip-locked: #24272b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 16px; margin: 0; }
+.sub { color: var(--muted); margin: 0 0 20px; max-width: 760px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.row { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: end; }
+label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+input[type=number], input[type=text] { font: inherit; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; width: 130px; }
+input[type=text].name { width: 180px; font-weight: 600; }
+.stat { display: flex; flex-direction: column; }
+.stat b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--muted); }
+.stat.bad b { color: var(--bad); }
+button { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.35; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.creep-head { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; margin-bottom: 12px; }
+.creep-head .spacer { flex: 1; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.badge.bad { background: var(--bad-soft); color: var(--bad); }
+.msg { margin: 0 0 12px; padding: 8px 10px; border-radius: 6px; background: var(--bad-soft); color: var(--bad); }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 960px; }
+th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; border-top: 0; }
+tr.group td { background: var(--bg); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; }
+tr.unreachable td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+td.name { white-space: nowrap; font-weight: 600; }
+td.name small { display: block; font-weight: 400; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+td.effect { min-width: 240px; color: var(--ink); }
+td.effect .dim { color: var(--muted); }
+.lv { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.lv button { width: 26px; padding: 2px 0; }
+.pips { display: flex; gap: 3px; }
+.pip { width: 26px; height: 22px; border-radius: 4px; background: var(--pip); display: flex; align-items: center;
+  justify-content: center; font-size: 10px; font-family: var(--mono); color: var(--muted); cursor: pointer; }
+.pip.on { background: var(--pip-on); color: #fff; }
+.pip.locked:not(.on) { background: var(--pip-locked); }
+input.iv { width: 70px; padding: 3px 6px; font-family: var(--mono); font-size: 12px; }
+details { margin-top: 12px; }
+summary { cursor: pointer; color: var(--muted); }
+ol.order { columns: 3 220px; margin: 8px 0 0; padding-left: 24px; font-size: 13px; }
+.notes { color: var(--muted); font-size: 13px; }
+.notes li { margin-bottom: 4px; }
+code { font-family: var(--mono); font-size: 12px; }
+@media (max-width: 640px) { main { padding: 16px 16px 48px; } input[type=text].name { width: 140px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Power Creep Calculator</h1>
+  <p class="sub">Plan operator builds against the engine's own <code>POWER_INFO</code>: which upgrades are reachable in what order,
+    what each power does at each level, the GPL it costs, and the ops a creep makes against what it spends.</p>
+
+  <section class="panel">
+    <div class="row">
+      <label class="field">Power processed
+        <input type="number" id="power" min="0" step="1000"></label>
+      <label class="field">or GPL
+        <input type="number" id="gpl" min="0" step="1"></label>
+      <div class="stat"><b id="gplUsed">0</b><span>GPL used (1 per creep + its level)</span></div>
+      <div class="stat" id="gplFreeBox"><b id="gplFree">0</b><span>GPL free</span></div>
+      <div class="stat"><b id="nextGpl">0</b><span>power to next GPL</span></div>
+      <div style="flex:1"></div>
+      <button id="addCreep" class="primary">Add operator</button>
+      <button id="share">Copy link</button>
+    </div>
+  </section>
+
+  <div id="creeps"></div>
+
+  <section class="panel notes">
+    <h2 style="color:var(--ink);margin-bottom:8px">How it works</h2>
+    <ul>
+      <li>Each upgrade raises a creep's level by one (+1000 hits, +100 store). Taking a power from level <i>k</i> to <i>k</i>+1 needs the creep
+        to already be at the level shown on that pip. A build is shown red when no upgrade order reaches it.</li>
+      <li>Only the <b>operator</b> class exists. Commander and executor were announced but never shipped, so they are not here.</li>
+      <li>Ops are costed per power at a cast interval you can edit: a lasting effect is recast when it expires (or at its cooldown, if later),
+        a one-shot every cooldown. An interval shorter than the duration means rotating that many targets. Untick a power to leave it out
+        of the budget. Generate ops is the only source of ops counted.</li>
+      <li>A power creep lives <span id="life"></span> ticks between renewals at a power spawn or power bank.</li>
+      <li>Data: <code>POWER_INFO</code> from Screeps' <code>common/lib/constants.js</code>; effects as the engine 4.2 processor applies them
+        (each power's source file is in its row's tooltip).</li>
+    </ul>
+  </section>
+</main>
+<script src="powers.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
